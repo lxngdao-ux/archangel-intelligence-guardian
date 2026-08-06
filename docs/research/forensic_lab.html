@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guardian Forensic Intelligence Lab — Case File 001</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#EDEEF0; --ink-dim:#9BA3AE; --ink-faint:#5D6570;
+    --bg:#0D1116; --bg-raised:#141A21; --bg-card:#181F28; --bg-deep:#080B0E;
+    --line:#262D38; --line-soft:#1C222C;
+    --trust:#4FD1C5; --trust-dim:rgba(79,209,197,0.12);
+    --risk-low:#E8C15A; --risk-mid:#E8A33D; --risk-high:#D9603F; --risk-crit:#D64545;
+    --crit-glow: rgba(214,69,69,0.35);
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Source Serif 4',serif; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:'IBM Plex Mono',monospace; }
+  .display{ font-family:'Space Grotesk',sans-serif; }
+  .wrap{ max-width:900px; margin:0 auto; padding:0 28px; }
+  section{ position:relative; padding:110px 0; border-bottom:1px solid var(--line-soft); }
+  section:last-of-type{ border-bottom:none; }
+  .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--trust); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .eyebrow::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--trust); box-shadow:0 0 8px var(--trust); }
+  h2.h{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(26px,4vw,38px); margin:0 0 16px; letter-spacing:-0.01em; }
+  p.lede{ color:var(--ink-dim); font-size:17px; max-width:60ch; margin:0 0 40px; }
+
+  /* ---------- Topbar: scroll progress / case arc ---------- */
+  .topbar{ position:fixed; top:0; left:0; width:100%; height:3px; background:var(--line-soft); z-index:999; }
+  .topbar-mask{ height:100%; width:0%; overflow:hidden; }
+  .topbar-fill{ height:100%; width:100vw;
+    background:linear-gradient(to right, var(--trust), var(--risk-low), var(--risk-mid), var(--risk-high), var(--risk-crit)); }
+
+  body::before{ content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 900px 500px at 10% -10%, rgba(79,209,197,0.05), transparent 60%),
+      radial-gradient(ellipse 800px 600px at 95% 30%, rgba(214,69,69,0.04), transparent 55%); }
+
+  /* ---------- Hero ---------- */
+  .hero{ padding:100px 0 60px; border-bottom:1px solid var(--line-soft); }
+  .hero-tag{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--trust); letter-spacing:0.14em; text-transform:uppercase; margin-bottom:20px; }
+  h1.title{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(34px,5.4vw,56px); line-height:1.06; margin:0 0 18px; letter-spacing:-0.01em; }
+  h1.title em{ font-style:normal; color:var(--trust); }
+  .hero-dek{ color:var(--ink-dim); font-size:18px; max-width:58ch; margin:0 0 8px; }
+  .hero-line{ color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; font-size:13px; margin-top:26px; }
+
+  /* ---------- Upload / processing console ---------- */
+  .console{ background:var(--bg-deep); border:1px solid var(--line); border-radius:12px; padding:26px 28px; margin-top:36px; }
+  .console-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); }
+  .console-dots{ display:flex; gap:6px; }
+  .console-dots span{ width:8px; height:8px; border-radius:50%; background:var(--line); }
+  .barline{ font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--trust); margin-bottom:8px; }
+  .progress-outer{ height:8px; background:var(--line-soft); border-radius:6px; overflow:hidden; margin-bottom:22px; }
+  .progress-inner{ height:100%; width:0%; border-radius:6px; background:linear-gradient(to right, var(--trust), var(--risk-mid)); transition:width .12s linear; }
+  .status-line{ display:flex; align-items:center; gap:10px; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--ink-faint); padding:5px 0; opacity:0.45; transition:opacity .3s ease, color .3s ease; }
+  .status-line .box{ width:15px; height:15px; border:1.5px solid var(--line); border-radius:4px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; transition:all .3s ease; }
+  .status-line.done{ opacity:1; color:var(--ink); }
+  .status-line.done .box{ border-color:var(--trust); background:var(--trust-dim); color:var(--trust); }
+  .status-line.done .box::after{ content:"✓"; font-size:10px; }
+
+  /* ---------- Evidence Detected ---------- */
+  .evidence-head{ display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:20px; margin-bottom:34px; }
+  .running-score{ text-align:right; }
+  .running-score .num{ font-family:'Space Grotesk',sans-serif; font-size:44px; font-weight:700; color:var(--risk-high); line-height:1; }
+  .running-score .lbl{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
+  .evidence-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:640px){ .evidence-grid{ grid-template-columns:1fr; } }
+  .ev-card{ background:var(--bg-card); border:1px solid var(--line); border-radius:12px; padding:20px; opacity:0; transform:translateY(14px) scale(.98); transition:opacity .55s ease, transform .55s ease; }
+  .ev-card.in{ opacity:1; transform:translateY(0) scale(1); }
+  .ev-card .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .ev-card .check{ color:var(--trust); font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .ev-card .check .mark{ width:20px; height:20px; border-radius:50%; background:var(--trust-dim); border:1px solid var(--trust); display:flex; align-items:center; justify-content:center; font-size:11px; }
+  .ev-card .delta{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--risk-high); font-weight:600; }
+  .ev-card .desc{ font-size:14.5px; color:var(--ink-dim); }
+
+  /* ---------- Timeline ---------- */
+  .tl{ display:flex; flex-direction:column; gap:0; }
+  .tl-item{ display:grid; grid-template-columns:110px 20px 1fr; gap:18px; opacity:0; transform:translateX(-10px); transition:opacity .5s ease, transform .5s ease; }
+  .tl-item.in{ opacity:1; transform:translateX(0); }
+  .tl-date{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-faint); padding-top:4px; text-align:right; }
+  .tl-node{ display:flex; flex-direction:column; align-items:center; }
+  .tl-node .dot{ width:11px; height:11px; border-radius:50%; background:var(--stage-color,var(--trust)); box-shadow:0 0 10px var(--stage-color,var(--trust)); margin-top:5px; }
+  .tl-node .ln{ flex:1; width:1.5px; background:var(--line); margin-top:4px; }
+  .tl-item:last-child .tl-node .ln{ display:none; }
+  .tl-body{ padding-bottom:34px; }
+  .tl-body h4{ font-family:'Space Grotesk',sans-serif; font-size:17px; margin:0 0 4px; font-weight:600; }
+  .tl-body p{ margin:0; color:var(--ink-dim); font-size:14.5px; }
+
+  /* ---------- Smoking gun ---------- */
+  .gun{ min-height:70vh; display:flex; align-items:center; justify-content:center; text-align:center; background:radial-gradient(ellipse at 50% 40%, rgba(214,69,69,0.10), transparent 65%); border-radius:16px; padding:70px 30px; }
+  .gun-inner{ opacity:0; transform:scale(.94); transition:opacity 1s ease, transform 1s ease; max-width:680px; }
+  .gun-inner.in{ opacity:1; transform:scale(1); }
+  .gun-tag{ font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--risk-crit); margin-bottom:22px; }
+  .gun-quote{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(22px,3.6vw,34px); line-height:1.3; color:var(--ink); margin-bottom:34px; }
+  .gun-quote::before,.gun-quote::after{ content:'"'; color:var(--risk-crit); }
+  .gun-meta{ display:flex; justify-content:center; gap:48px; flex-wrap:wrap; }
+  .gun-meta div span{ display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+  .gun-meta div b{ font-family:'Space Grotesk',sans-serif; font-size:22px; color:var(--risk-crit); }
+
+  /* ---------- Explanation panel ---------- */
+  .explain-grid{ display:flex; flex-direction:column; gap:12px; }
+  .ex-card{ background:var(--bg-card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .ex-head{ display:flex; justify-content:space-between; align-items:center; padding:16px 20px; cursor:pointer; }
+  .ex-head h4{ margin:0; font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:600; }
+  .ex-toggle{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--trust); display:flex; align-items:center; gap:6px; }
+  .ex-toggle .arrow{ transition:transform .3s ease; }
+  .ex-card.open .ex-toggle .arrow{ transform:rotate(180deg); }
+  .ex-body{ max-height:0; overflow:hidden; transition:max-height .4s ease; }
+  .ex-card.open .ex-body{ max-height:220px; }
+  .ex-body-in{ padding:0 20px 20px; }
+  .ex-body-in p{ margin:0 0 14px; color:var(--ink-dim); font-size:14.5px; }
+  .ex-body-in ul{ margin:0 0 14px; padding-left:18px; color:var(--ink-dim); font-size:14px; }
+  .conf-row{ display:flex; align-items:center; gap:12px; }
+  .conf-row .conf-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.08em; flex:0 0 auto; }
+  .conf-track{ flex:1; height:6px; background:var(--line-soft); border-radius:4px; overflow:hidden; }
+  .conf-fill{ height:100%; width:0%; background:var(--trust); border-radius:4px; transition:width 1s cubic-bezier(.2,.8,.2,1); }
+  .conf-num{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--trust); flex:0 0 auto; }
+
+  /* ---------- Pattern matching ---------- */
+  .pm-note{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-faint); margin-bottom:26px; }
+  .pm-row{ display:grid; grid-template-columns:180px 1fr 56px; align-items:center; gap:16px; margin-bottom:16px; }
+  .pm-label{ font-size:14.5px; color:var(--ink); }
+  .pm-track{ height:10px; background:var(--line-soft); border-radius:6px; overflow:hidden; }
+  .pm-fill{ height:100%; width:0%; border-radius:6px; transition:width 1.1s cubic-bezier(.2,.8,.2,1); }
+  .pm-pct{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-dim); text-align:right; }
+
+  /* ---------- Behaviour graph ---------- */
+  .bg-row{ display:grid; grid-template-columns:190px 1fr 44px; align-items:center; gap:16px; margin-bottom:14px; }
+  .bg-label{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-dim); }
+  .bg-track{ height:10px; background:var(--line-soft); border-radius:6px; overflow:hidden; }
+  .bg-fill{ height:100%; width:0%; background:linear-gradient(to right, var(--trust), var(--risk-mid)); border-radius:6px; transition:width 1s cubic-bezier(.2,.8,.2,1); }
+  .bg-val{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); }
+
+  /* ---------- Conversation replay ---------- */
+  .replay-shell{ display:grid; grid-template-columns:1fr 150px; gap:28px; align-items:start; }
+  @media (max-width:640px){ .replay-shell{ grid-template-columns:1fr; } }
+  .replay-console{ background:var(--bg-deep); border:1px solid var(--line); border-radius:12px; padding:22px; min-height:340px; }
+  .rmsg{ font-size:14.5px; padding:9px 0; opacity:0; transform:translateY(6px); transition:opacity .4s ease, transform .4s ease; border-bottom:1px dashed var(--line-soft); }
+  .rmsg.in{ opacity:1; transform:translateY(0); }
+  .rmsg:last-child{ border-bottom:none; }
+  .rmsg .who{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); display:block; margin-bottom:3px; }
+  .rmsg.recruiter .who{ color:var(--risk-high); }
+  .replay-score{ position:sticky; top:24px; background:var(--bg-card); border:1px solid var(--line); border-radius:12px; padding:22px 16px; text-align:center; }
+  .replay-score .num{ font-family:'Space Grotesk',sans-serif; font-size:40px; font-weight:700; color:var(--risk-high); transition:color .4s ease; }
+  .replay-score .lbl{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.08em; margin-top:6px; }
+
+  /* ---------- Ending flow ---------- */
+  .flow{ display:flex; flex-direction:column; align-items:center; gap:0; }
+  .flow-step{ display:flex; flex-direction:column; align-items:center; gap:6px; opacity:0; transform:translateY(10px); transition:opacity .5s ease, transform .5s ease; padding:12px 0; }
+  .flow-step.in{ opacity:1; transform:translateY(0); }
+  .flow-step .pill{ background:var(--bg-card); border:1px solid var(--line); border-radius:30px; padding:10px 22px; font-size:14.5px; }
+  .flow-step .risk{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--risk-high); font-weight:600; }
+  .flow-arrow{ color:var(--ink-faint); font-size:16px; opacity:0; transition:opacity .4s ease; }
+  .flow-arrow.in{ opacity:1; }
+  .final-banner{ margin-top:30px; padding:26px 30px; border:1px solid var(--risk-crit); border-radius:14px; background:rgba(214,69,69,0.08); text-align:center; opacity:0; transform:scale(.96); transition:opacity .6s ease, transform .6s ease; }
+  .final-banner.in{ opacity:1; transform:scale(1); }
+  .final-banner .lbl{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; color:var(--risk-crit); text-transform:uppercase; margin-bottom:10px; }
+  .final-banner h3{ font-family:'Space Grotesk',sans-serif; font-size:clamp(22px,4vw,32px); margin:0; color:var(--ink); letter-spacing:-0.01em; }
+
+  /* ---------- Case library ---------- */
+  .lib-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:38px; }
+  @media (max-width:640px){ .lib-grid{ grid-template-columns:1fr; } }
+  .lib-card{ border:1px solid var(--line); border-radius:12px; padding:18px 20px; background:var(--bg-card); }
+  .lib-card.active{ border-color:var(--trust); background:linear-gradient(180deg, rgba(79,209,197,0.08), var(--bg-card)); }
+  .lib-card .n{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:0.08em; margin-bottom:6px; }
+  .lib-card.active .n{ color:var(--trust); }
+  .lib-card h5{ font-family:'Space Grotesk',sans-serif; font-size:15.5px; margin:0 0 4px; font-weight:600; }
+  .lib-card p{ margin:0; font-size:13px; color:var(--ink-faint); }
+  .lib-card.locked{ opacity:0.55; }
+  .lib-card.locked h5::after{ content:" 🔒"; }
+  .positioning{ border-top:1px solid var(--line); padding-top:32px; }
+  .positioning p{ font-size:17px; color:var(--ink-dim); max-width:64ch; }
+  .positioning p b{ color:var(--ink); font-weight:600; }
+
+  .redaction-note{ margin-top:30px; padding:14px 16px; border:1px solid var(--line); border-left:2px solid var(--risk-mid); background:var(--bg-raised); font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-dim); max-width:60ch; }
+
+  footer{ padding:50px 0 70px; }
+  .replay-btn{ display:inline-flex; align-items:center; gap:8px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--trust); background:var(--trust-dim); border:1px solid rgba(79,209,197,0.4); padding:10px 18px; border-radius:30px; cursor:pointer; margin-bottom:26px; }
+  .replay-btn:hover{ background:rgba(79,209,197,0.2); }
+  footer .fine{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); max-width:60ch; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition-duration:0.01ms !important; animation-duration:0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="topbar-mask" id="topbarMask"><div class="topbar-fill"></div></div></div>
+
+<div class="wrap">
+
+  <!-- HERO + UPLOAD SEQUENCE -->
+  <section class="hero" id="heroSection">
+    <div class="hero-tag">Guardian Forensic Intelligence Lab</div>
+    <h1 class="title">Guardian doesn't read messages.<br>It builds <em>evidence</em>.</h1>
+    <p class="hero-dek">Case File 001 — a real WhatsApp investment scam, reconstructed as Guardian's investigation pipeline would process it: live, evidence by evidence.</p>
+
+    <div class="console">
+      <div class="console-top">
+        <span>guardian://intake · fynor_case_001.txt</span>
+        <div class="console-dots"><span></span><span></span><span></span></div>
+      </div>
+      <div class="barline" id="barline">Uploading WhatsApp Conversation…</div>
+      <div class="progress-outer"><div class="progress-inner" id="uploadBar"></div></div>
+      <div id="statusLines">
+        <div class="status-line"><div class="box"></div>Extracting messages</div>
+        <div class="status-line"><div class="box"></div>Finding participants</div>
+        <div class="status-line"><div class="box"></div>Scanning links</div>
+        <div class="status-line"><div class="box"></div>Detecting behavioural patterns</div>
+        <div class="status-line"><div class="box"></div>Comparing against fraud database</div>
+        <div class="status-line"><div class="box"></div>Calculating Trust Score</div>
+      </div>
+    </div>
+    <div class="hero-line">↓ scroll to watch the investigation unfold</div>
+  </section>
+
+  <!-- EVIDENCE DETECTED -->
+  <section id="evidenceSection">
+    <div class="eyebrow">Evidence detected</div>
+    <div class="evidence-head">
+      <div>
+        <h2 class="h">Guardian finds the first four signals</h2>
+        <p class="lede" style="margin-bottom:0;">Each one raises the running score independently — no single message triggers the verdict.</p>
+      </div>
+      <div class="running-score"><div class="num" id="evScore">0</div><div class="lbl">Risk points so far</div></div>
+    </div>
+    <div class="evidence-grid" id="evGrid">
+      <div class="ev-card" data-delta="18"><div class="top"><div class="check"><span class="mark">✓</span>Referral Link Found</div><div class="delta">+18</div></div><div class="desc">Registration required a referral code embedded in the URL — access wasn't open.</div></div>
+      <div class="ev-card" data-delta="11"><div class="top"><div class="check"><span class="mark">✓</span>Invite Code Detected</div><div class="delta">+11</div></div><div class="desc">A second, separate invite code was required to unlock the trading group.</div></div>
+      <div class="ev-card" data-delta="14"><div class="top"><div class="check"><span class="mark">✓</span>Password Shared via WhatsApp</div><div class="delta">+14</div></div><div class="desc">An account password was sent in plaintext over an unencrypted-by-default channel.</div></div>
+      <div class="ev-card" data-delta="9"><div class="top"><div class="check"><span class="mark">✓</span>Wealth Promise Language</div><div class="delta">+9</div></div><div class="desc">"Success and wealth will surely be yours" — unconditional return language, no risk disclosure.</div></div>
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section id="timelineSection">
+    <div class="eyebrow">Timeline intelligence</div>
+    <h2 class="h">The case, hour by hour</h2>
+    <p class="lede">Reconstructed directly from message timestamps — not summarized, not rounded.</p>
+    <div class="tl" id="tlList">
+      <div class="tl-item" style="--stage-color:var(--trust)"><div class="tl-date">17 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>First contact</h4><p>A known contact reopens a prior conversation about "that trading thing."</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-low)"><div class="tl-date">21 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>Payment sent</h4><p>Funds transferred before any platform, domain, or regulatory check.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-mid)"><div class="tl-date">23 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>Referral registration</h4><p>Invite-coded signup, plaintext password, guaranteed-return messaging.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-high)"><div class="tl-date">26 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>Recruitment requirement appears</h4><p>Withdrawal disclosed as conditional on recruiting five further participants.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-crit)"><div class="tl-date">13 Jul</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>KYC requested</h4><p>Identity verification requested three weeks after funds were already committed.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-crit)"><div class="tl-date">30 Jul</div><div class="tl-node"><div class="dot"></div></div><div class="tl-body"><h4>Engagement continues</h4><p>Voice-note exchanges ongoing — the case remains open at time of writing.</p></div></div>
+    </div>
+  </section>
+
+  <!-- SMOKING GUN -->
+  <section id="gunSection">
+    <div class="gun">
+      <div class="gun-inner" id="gunInner">
+        <div class="gun-tag">Critical evidence</div>
+        <div class="gun-quote">You have to wait until you have five people before you can withdraw</div>
+        <div class="gun-meta">
+          <div><span>Confidence</span><b>99.4%</b></div>
+          <div><span>Known pattern</span><b>Pyramid</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPLANATION PANEL -->
+  <section id="explainSection">
+    <div class="eyebrow">AI explanation panel</div>
+    <h2 class="h">Every flag answers "why?"</h2>
+    <p class="lede">Click a signal to see Guardian's reasoning — this is the difference between a verdict and evidence.</p>
+    <div class="explain-grid">
+      <div class="ex-card" data-conf="92">
+        <div class="ex-head"><h4>Referral Link</h4><div class="ex-toggle">Why? <span class="arrow">▾</span></div></div>
+        <div class="ex-body"><div class="ex-body-in">
+          <p>Legitimate investment platforms rarely require an invitation code to register. Referral-only access is strongly associated with:</p>
+          <ul><li>Multi-level marketing schemes</li><li>Pyramid structures</li><li>Ponzi onboarding</li></ul>
+          <div class="conf-row"><span class="conf-label">Confidence</span><div class="conf-track"><div class="conf-fill"></div></div><span class="conf-num">92%</span></div>
+        </div></div>
+      </div>
+      <div class="ex-card" data-conf="88">
+        <div class="ex-head"><h4>Password Shared via WhatsApp</h4><div class="ex-toggle">Why? <span class="arrow">▾</span></div></div>
+        <div class="ex-body"><div class="ex-body-in">
+          <p>Legitimate platforms issue credentials through their own secured system, never as plaintext in a chat app. This exposes the account to anyone with access to the conversation.</p>
+          <div class="conf-row"><span class="conf-label">Confidence</span><div class="conf-track"><div class="conf-fill"></div></div><span class="conf-num">88%</span></div>
+        </div></div>
+      </div>
+      <div class="ex-card" data-conf="85">
+        <div class="ex-head"><h4>Wealth Promise Language</h4><div class="ex-toggle">Why? <span class="arrow">▾</span></div></div>
+        <div class="ex-body"><div class="ex-body-in">
+          <p>Phrases guaranteeing profit ("success and wealth will surely be yours") with no mention of risk are a scripted persuasion pattern, not a disclosure a regulated platform would make.</p>
+          <div class="conf-row"><span class="conf-label">Confidence</span><div class="conf-track"><div class="conf-fill"></div></div><span class="conf-num">85%</span></div>
+        </div></div>
+      </div>
+      <div class="ex-card" data-conf="99">
+        <div class="ex-head"><h4>Recruitment Dependency</h4><div class="ex-toggle">Why? <span class="arrow">▾</span></div></div>
+        <div class="ex-body"><div class="ex-body-in">
+          <p>Withdrawal conditioned on recruiting new participants means returns come from new deposits, not from any underlying trading activity. This is the structural definition of a pyramid scheme.</p>
+          <div class="conf-row"><span class="conf-label">Confidence</span><div class="conf-track"><div class="conf-fill"></div></div><span class="conf-num">99%</span></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PATTERN MATCHING -->
+  <section id="patternSection">
+    <div class="eyebrow">Pattern matching</div>
+    <h2 class="h">Compared against known scam behaviour, not keywords</h2>
+    <p class="pm-note">Guardian compared this conversation's structure against 47 documented scam patterns.</p>
+    <div id="pmList">
+      <div class="pm-row" data-pct="18" data-color="var(--trust)"><div class="pm-label">Pig Butchering</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">18%</div></div>
+      <div class="pm-row" data-pct="41" data-color="var(--risk-low)"><div class="pm-label">Fake Crypto Exchange</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">41%</div></div>
+      <div class="pm-row" data-pct="74" data-color="var(--risk-high)"><div class="pm-label">Investment Fraud</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">74%</div></div>
+      <div class="pm-row" data-pct="96" data-color="var(--risk-crit)"><div class="pm-label">Pyramid Scheme</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">96%</div></div>
+    </div>
+  </section>
+
+  <!-- BEHAVIOUR GRAPH -->
+  <section id="behaviorSection">
+    <div class="eyebrow">Behavioural graph</div>
+    <h2 class="h">The scam's psychological profile</h2>
+    <p class="lede">Six manipulation techniques, weighted by how strongly each showed up in the conversation.</p>
+    <div id="bgList">
+      <div class="bg-row" data-pct="58"><div class="bg-label">Recruitment</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">7/12</div></div>
+      <div class="bg-row" data-pct="83"><div class="bg-label">Financial Pressure</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">10/12</div></div>
+      <div class="bg-row" data-pct="50"><div class="bg-label">Urgency</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">6/12</div></div>
+      <div class="bg-row" data-pct="67"><div class="bg-label">Authority Manipulation</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">8/12</div></div>
+      <div class="bg-row" data-pct="100"><div class="bg-label">Recruitment Dependency</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">12/12</div></div>
+      <div class="bg-row" data-pct="67"><div class="bg-label">Social Proof</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">8/12</div></div>
+    </div>
+  </section>
+
+  <!-- CONVERSATION REPLAY -->
+  <section id="replaySection">
+    <div class="eyebrow">Conversation replay</div>
+    <h2 class="h">Watch the score move in real time</h2>
+    <p class="lede">Every message updates the Trust Risk score — the verdict is never the result of a single line.</p>
+    <div class="replay-shell">
+      <div class="replay-console" id="replayConsole">
+        <div class="rmsg recruiter" data-score="12"><span class="who">Recruiter</span>"Are you still interested in that trading thing we spoke about?"</div>
+        <div class="rmsg" data-score="18"><span class="who">Client</span>"I've sent the transfer, my friend."</div>
+        <div class="rmsg" data-score="26"><span class="who">Client</span>"Password: [redacted]" — sent over open chat</div>
+        <div class="rmsg recruiter" data-score="41"><span class="who">Recruiter</span>"Success and wealth will surely be yours."</div>
+        <div class="rmsg recruiter" data-score="58"><span class="who">Recruiter</span>"Have you joined the group yet?"</div>
+        <div class="rmsg" data-score="73"><span class="who">Client</span>"You have to wait until you have five people before you can withdraw."</div>
+        <div class="rmsg recruiter" data-score="94"><span class="who">Recruiter</span>"Please do the KYC — here's the video for it."</div>
+      </div>
+      <div class="replay-score">
+        <div class="num" id="replayNum">0</div>
+        <div class="lbl">Trust risk score</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENDING -->
+  <section id="endingSection">
+    <div class="eyebrow">If Guardian had been used</div>
+    <h2 class="h">The same case, with Guardian in the loop</h2>
+    <div class="flow" id="flowList">
+      <div class="flow-step"><div class="pill">Client uploads the first screenshot</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Guardian begins analysis <span class="risk">Risk 31%</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Platform investigation begins</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Referral pattern found <span class="risk">Risk 68%</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Recruitment pattern detected <span class="risk">Risk 94%</span></div></div>
+    </div>
+    <div class="final-banner" id="finalBanner">
+      <div class="lbl">Guardian's recommendation</div>
+      <h3>Do not send money.</h3>
+    </div>
+  </section>
+
+  <!-- CASE LIBRARY -->
+  <section id="librarySection">
+    <div class="eyebrow">Guardian intelligence case library</div>
+    <h2 class="h">Case File 001 of a growing library</h2>
+    <div class="lib-grid">
+      <div class="lib-card active"><div class="n">Case 001</div><h5>Fynor Trading</h5><p>Investment / pyramid scheme</p></div>
+      <div class="lib-card locked"><div class="n">Case 002</div><h5>Fake Employment Scam</h5><p>In progress</p></div>
+      <div class="lib-card locked"><div class="n">Case 003</div><h5>Romance Investment Fraud</h5><p>In progress</p></div>
+      <div class="lib-card locked"><div class="n">Case 004</div><h5>WhatsApp Impersonation</h5><p>In progress</p></div>
+    </div>
+    <div class="positioning">
+      <p><b>Guardian is building an explainable Trust Intelligence engine, trained on real-world scam conversations from Africa.</b> This case doesn't just get labeled fraudulent — it gets reconstructed, its behavioural evidence identified, every conclusion explained, and the exact moment intervention could have prevented harm made visible.</p>
+    </div>
+    <div class="redaction-note">This reconstruction redacts the client's name, phone number, email address, ID number, and account password — all of which appeared in plaintext in the original chat export.</div>
+  </section>
+
+  <footer>
+    <button class="replay-btn" id="replayBtn">↻ Replay investigation</button>
+    <p class="fine">Guardian Forensic Intelligence Lab — Case File 001, reconstructed from a WhatsApp export dated 17 Jun – 30 Jul 2026.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- topbar scroll progress ---- */
+  const topbarMask = document.getElementById('topbarMask');
+  function updateTopbar(){
+    const h = document.documentElement;
+    const scrolled = h.scrollTop;
+    const max = h.scrollHeight - h.clientHeight;
+    const pct = max > 0 ? (scrolled/max)*100 : 0;
+    topbarMask.style.width = pct + '%';
+  }
+  window.addEventListener('scroll', updateTopbar);
+  updateTopbar();
+
+  /* ---- generic reveal-once observer ---- */
+  function onVisible(el, cb, threshold){
+    if (REDUCED){ cb(); return; }
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if (entry.isIntersecting){ cb(); io.unobserve(entry.target); }
+      });
+    }, { threshold: threshold || 0.3 });
+    io.observe(el);
+  }
+
+  function countUp(el, from, to, duration){
+    if (REDUCED){ el.textContent = to; return; }
+    const start = performance.now();
+    function step(t){
+      const p = Math.min(1, (t-start)/duration);
+      el.textContent = Math.round(from + (to-from)*p);
+      if (p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ---- hero upload sequence ---- */
+  const uploadBar = document.getElementById('uploadBar');
+  const statusLines = document.querySelectorAll('#statusLines .status-line');
+  function runUploadSequence(){
+    statusLines.forEach(l => l.classList.remove('done'));
+    uploadBar.style.width = '0%';
+    if (REDUCED){
+      uploadBar.style.width = '100%';
+      statusLines.forEach(l => l.classList.add('done'));
+      return;
+    }
+    const dur = 2400;
+    const start = performance.now();
+    function step(t){
+      const p = Math.min(1, (t-start)/dur);
+      uploadBar.style.width = (p*100) + '%';
+      if (p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+    statusLines.forEach((line,i)=>{
+      setTimeout(()=>line.classList.add('done'), 320*i + 350);
+    });
+  }
+  window.addEventListener('load', ()=> setTimeout(runUploadSequence, 300));
+  document.getElementById('replayBtn').addEventListener('click', ()=>{
+    document.getElementById('heroSection').scrollIntoView({behavior:'smooth'});
+    setTimeout(runUploadSequence, 500);
+  });
+
+  /* ---- evidence cards + running score ---- */
+  const evCards = document.querySelectorAll('#evGrid .ev-card');
+  const evScoreEl = document.getElementById('evScore');
+  onVisible(document.getElementById('evidenceSection'), ()=>{
+    let running = 0;
+    evCards.forEach((card,i)=>{
+      setTimeout(()=>{
+        card.classList.add('in');
+        const delta = parseInt(card.dataset.delta,10);
+        const newTotal = running + delta;
+        countUp(evScoreEl, running, newTotal, REDUCED?0:600);
+        running = newTotal;
+      }, REDUCED?0:i*420);
+    });
+  });
+
+  /* ---- timeline ---- */
+  const tlItems = document.querySelectorAll('#tlList .tl-item');
+  onVisible(document.getElementById('timelineSection'), ()=>{
+    tlItems.forEach((it,i)=> setTimeout(()=> it.classList.add('in'), REDUCED?0:i*180));
+  });
+
+  /* ---- smoking gun ---- */
+  onVisible(document.getElementById('gunSection'), ()=>{
+    document.getElementById('gunInner').classList.add('in');
+  }, 0.55);
+
+  /* ---- explanation panel (accordion) ---- */
+  document.querySelectorAll('.ex-card').forEach(card=>{
+    const head = card.querySelector('.ex-head');
+    head.addEventListener('click', ()=>{
+      const wasOpen = card.classList.contains('open');
+      document.querySelectorAll('.ex-card').forEach(c=>c.classList.remove('open'));
+      if (!wasOpen){
+        card.classList.add('open');
+        const fill = card.querySelector('.conf-fill');
+        requestAnimationFrame(()=>{ fill.style.width = card.dataset.conf + '%'; });
+      }
+    });
+  });
+
+  /* ---- pattern matching bars ---- */
+  onVisible(document.getElementById('patternSection'), ()=>{
+    document.querySelectorAll('#pmList .pm-row').forEach((row,i)=>{
+      setTimeout(()=>{
+        const fill = row.querySelector('.pm-fill');
+        fill.style.background = row.dataset.color;
+        fill.style.width = row.dataset.pct + '%';
+      }, REDUCED?0:i*180);
+    });
+  });
+
+  /* ---- behaviour graph bars ---- */
+  onVisible(document.getElementById('behaviorSection'), ()=>{
+    document.querySelectorAll('#bgList .bg-row').forEach((row,i)=>{
+      setTimeout(()=>{ row.querySelector('.bg-fill').style.width = row.dataset.pct + '%'; }, REDUCED?0:i*140);
+    });
+  });
+
+  /* ---- conversation replay ---- */
+  const replayNum = document.getElementById('replayNum');
+  onVisible(document.getElementById('replaySection'), ()=>{
+    const msgs = document.querySelectorAll('#replayConsole .rmsg');
+    let prev = 0;
+    msgs.forEach((m,i)=>{
+      setTimeout(()=>{
+        m.classList.add('in');
+        const to = parseInt(m.dataset.score,10);
+        countUp(replayNum, prev, to, REDUCED?0:500);
+        prev = to;
+      }, REDUCED?0:i*550);
+    });
+  }, 0.2);
+
+  /* ---- ending flow ---- */
+  onVisible(document.getElementById('endingSection'), ()=>{
+    const steps = document.querySelectorAll('#flowList .flow-step, #flowList .flow-arrow');
+    steps.forEach((s,i)=> setTimeout(()=> s.classList.add('in'), REDUCED?0:i*220));
+    setTimeout(()=> document.getElementById('finalBanner').classList.add('in'), REDUCED?0:steps.length*220 + 300);
+  }, 0.15);
+
+})();
+</script>
+
+</body>
+</html>

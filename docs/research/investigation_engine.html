@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guardian Investigation Engine — Case File 001</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#EDEEF0; --ink-dim:#9BA3AE; --ink-faint:#5D6570;
+    --bg:#0D1116; --bg-raised:#141A21; --bg-card:#181F28; --bg-deep:#080B0E;
+    --line:#262D38; --line-soft:#1C222C;
+    --trust:#4FD1C5; --trust-dim:rgba(79,209,197,0.12);
+    --risk-low:#E8C15A; --risk-mid:#E8A33D; --risk-high:#D9603F; --risk-crit:#D64545;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Source Serif 4',serif; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:'IBM Plex Mono',monospace; }
+  .wrap{ max-width:920px; margin:0 auto; padding:0 28px; }
+  section{ position:relative; padding:104px 0; border-bottom:1px solid var(--line-soft); }
+  section:last-of-type{ border-bottom:none; }
+  .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--trust); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .eyebrow::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--trust); box-shadow:0 0 8px var(--trust); }
+  h2.h{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(26px,4vw,38px); margin:0 0 16px; letter-spacing:-0.01em; }
+  p.lede{ color:var(--ink-dim); font-size:17px; max-width:62ch; margin:0 0 40px; }
+
+  .topbar{ position:fixed; top:0; left:0; width:100%; height:3px; background:var(--line-soft); z-index:999; }
+  .topbar-mask{ height:100%; width:0%; overflow:hidden; }
+  .topbar-fill{ height:100%; width:100vw; background:linear-gradient(to right, var(--trust), var(--risk-low), var(--risk-mid), var(--risk-high), var(--risk-crit)); }
+
+  body::before{ content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background: radial-gradient(ellipse 900px 500px at 10% -10%, rgba(79,209,197,0.05), transparent 60%),
+                radial-gradient(ellipse 800px 600px at 95% 30%, rgba(214,69,69,0.04), transparent 55%); }
+
+  /* Hero */
+  .hero{ padding:100px 0 60px; border-bottom:1px solid var(--line-soft); }
+  .hero-tag{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--trust); letter-spacing:0.14em; text-transform:uppercase; margin-bottom:20px; }
+  h1.title{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(32px,5.2vw,52px); line-height:1.08; margin:0 0 18px; letter-spacing:-0.01em; }
+  h1.title em{ font-style:normal; color:var(--trust); }
+  .hero-dek{ color:var(--ink-dim); font-size:18px; max-width:60ch; margin:0 0 8px; }
+  .hero-line{ color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; font-size:13px; margin-top:26px; }
+  .console{ background:var(--bg-deep); border:1px solid var(--line); border-radius:12px; padding:26px 28px; margin-top:36px; }
+  .console-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); }
+  .console-dots{ display:flex; gap:6px; } .console-dots span{ width:8px; height:8px; border-radius:50%; background:var(--line); }
+  .barline{ font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--trust); margin-bottom:8px; }
+  .progress-outer{ height:8px; background:var(--line-soft); border-radius:6px; overflow:hidden; margin-bottom:22px; }
+  .progress-inner{ height:100%; width:0%; border-radius:6px; background:linear-gradient(to right, var(--trust), var(--risk-mid)); }
+  .status-line{ display:flex; align-items:center; gap:10px; font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--ink-faint); padding:5px 0; opacity:0.45; transition:opacity .3s ease, color .3s ease; }
+  .status-line .box{ width:15px; height:15px; border:1.5px solid var(--line); border-radius:4px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; transition:all .3s ease; }
+  .status-line.done{ opacity:1; color:var(--ink); }
+  .status-line.done .box{ border-color:var(--trust); background:var(--trust-dim); color:var(--trust); }
+  .status-line.done .box::after{ content:"✓"; font-size:10px; }
+
+  /* Multi-agent dashboard */
+  .agent-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media (max-width:760px){ .agent-grid{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:520px){ .agent-grid{ grid-template-columns:1fr; } }
+  .agent-card{ background:var(--bg-card); border:1px solid var(--line); border-radius:12px; padding:20px; opacity:0; transform:translateY(10px); transition:opacity .5s ease, transform .5s ease; }
+  .agent-card.in{ opacity:1; transform:translateY(0); }
+  .agent-card h4{ font-family:'Space Grotesk',sans-serif; font-size:14.5px; margin:0 0 12px; display:flex; align-items:center; gap:8px; font-weight:600; }
+  .agent-card h4 .dot{ width:7px; height:7px; border-radius:50%; background:var(--trust); box-shadow:0 0 6px var(--trust); }
+  .agent-card ul{ list-style:none; margin:0; padding:0; }
+  .agent-card li{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); padding:4px 0; opacity:.4; transition:opacity .3s ease, color .3s ease; display:flex; gap:8px; align-items:center; }
+  .agent-card li::before{ content:"○"; font-size:8px; color:var(--line); }
+  .agent-card li.done{ opacity:1; color:var(--ink-dim); }
+  .agent-card li.done::before{ content:"✓"; color:var(--trust); font-size:11px; }
+
+  /* Evidence & reasoning panel */
+  .tier-block{ margin-bottom:38px; }
+  .tier-head{ display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .tier-badge{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.09em; text-transform:uppercase; padding:4px 11px; border-radius:20px; border:1px solid; flex:0 0 auto; }
+  .tier-badge.observed{ color:var(--trust); border-color:var(--trust); background:var(--trust-dim); }
+  .tier-badge.inferred{ color:var(--risk-mid); border-color:var(--risk-mid); background:rgba(232,163,61,0.12); }
+  .tier-badge.conclusion{ color:var(--risk-crit); border-color:var(--risk-crit); background:rgba(214,69,69,0.12); }
+  .tier-desc{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); }
+  .ev-row{ background:var(--bg-card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:10px; }
+  .ev-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+  .ev-title{ font-size:15px; color:var(--ink); }
+  .ev-points{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--risk-high); font-weight:600; flex:0 0 auto; }
+  .ev-source{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-faint); margin-top:8px; cursor:pointer; display:inline-flex; gap:6px; align-items:center; user-select:none; }
+  .ev-source:hover{ color:var(--trust); }
+  .ev-snippet{ max-height:0; overflow:hidden; transition:max-height .35s ease; }
+  .ev-snippet.open{ max-height:70px; }
+  .ev-snippet-in{ margin-top:10px; padding:10px 12px; background:var(--bg-deep); border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim); }
+  .reasoning-toggle{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--trust); cursor:pointer; margin-top:10px; display:inline-block; user-select:none; }
+  .reasoning-chain{ max-height:0; overflow:hidden; transition:max-height .4s ease; }
+  .reasoning-chain.open{ max-height:220px; }
+  .reasoning-chain-in{ margin-top:10px; padding-left:2px; }
+  .rstep{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); padding:4px 0; opacity:0; transform:translateX(-6px); transition:opacity .35s ease, transform .35s ease; }
+  .rstep.in{ opacity:1; transform:translateX(0); color:var(--ink-dim); }
+  .rstep.final{ color:var(--risk-high); font-weight:600; }
+  .rstep .arw{ color:var(--line); margin-right:6px; }
+
+  /* Smoking gun */
+  .gun{ min-height:64vh; display:flex; align-items:center; justify-content:center; text-align:center; background:radial-gradient(ellipse at 50% 40%, rgba(214,69,69,0.10), transparent 65%); border-radius:16px; padding:70px 30px; }
+  .gun-inner{ opacity:0; transform:scale(.94); transition:opacity 1s ease, transform 1s ease; max-width:680px; }
+  .gun-inner.in{ opacity:1; transform:scale(1); }
+  .gun-tag{ font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--risk-crit); margin-bottom:22px; }
+  .gun-quote{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(22px,3.6vw,34px); line-height:1.3; color:var(--ink); margin-bottom:14px; }
+  .gun-quote::before,.gun-quote::after{ content:'"'; color:var(--risk-crit); }
+  .gun-src{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); margin-bottom:30px; }
+  .gun-meta{ display:flex; justify-content:center; gap:48px; flex-wrap:wrap; }
+  .gun-meta div span{ display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+  .gun-meta div b{ font-family:'Space Grotesk',sans-serif; font-size:21px; }
+
+  /* Pattern matching */
+  .pm-note{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-faint); margin-bottom:26px; }
+  .pm-row{ display:grid; grid-template-columns:180px 1fr 56px; align-items:center; gap:16px; margin-bottom:16px; }
+  .pm-label{ font-size:14.5px; color:var(--ink); }
+  .pm-track{ height:10px; background:var(--line-soft); border-radius:6px; overflow:hidden; }
+  .pm-fill{ height:100%; width:0%; border-radius:6px; transition:width 1.1s cubic-bezier(.2,.8,.2,1); }
+  .pm-pct{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-dim); text-align:right; }
+
+  /* Behaviour graph */
+  .bg-row{ display:grid; grid-template-columns:190px 1fr 44px; align-items:center; gap:16px; margin-bottom:14px; }
+  .bg-label{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-dim); }
+  .bg-track{ height:10px; background:var(--line-soft); border-radius:6px; overflow:hidden; }
+  .bg-fill{ height:100%; width:0%; background:linear-gradient(to right, var(--trust), var(--risk-mid)); border-radius:6px; transition:width 1s cubic-bezier(.2,.8,.2,1); }
+  .bg-val{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); }
+
+  /* Trust graph */
+  .tg{ display:flex; flex-direction:column; align-items:center; }
+  .tg-node{ background:var(--bg-card); border:1px solid var(--line); border-radius:30px; padding:11px 24px; font-size:14.5px; display:flex; align-items:center; gap:10px; opacity:0; transform:translateY(8px); transition:opacity .5s ease, transform .5s ease; }
+  .tg-node.in{ opacity:1; transform:translateY(0); }
+  .tg-node .tag{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; border:1px solid var(--line); border-radius:10px; padding:2px 7px; }
+  .tg-arrow{ color:var(--ink-faint); font-size:15px; padding:5px 0; opacity:0; transition:opacity .4s ease; }
+  .tg-arrow.in{ opacity:1; }
+  .tg-fan-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--risk-high); margin:16px 0 12px; text-align:center; }
+  .tg-fan{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .tg-fan .mini{ width:40px; height:40px; border-radius:50%; background:var(--bg-card); border:1px dashed var(--risk-high); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--risk-high); opacity:0; transform:scale(.7); transition:opacity .4s ease, transform .4s ease; }
+  .tg-fan .mini.in{ opacity:1; transform:scale(1); }
+
+  /* Conversation replay */
+  .replay-shell{ display:grid; grid-template-columns:1fr 150px; gap:28px; align-items:start; }
+  @media (max-width:640px){ .replay-shell{ grid-template-columns:1fr; } }
+  .replay-console{ background:var(--bg-deep); border:1px solid var(--line); border-radius:12px; padding:22px; min-height:300px; }
+  .rmsg{ font-size:14.5px; padding:9px 0; opacity:0; transform:translateY(6px); transition:opacity .4s ease, transform .4s ease; border-bottom:1px dashed var(--line-soft); }
+  .rmsg.in{ opacity:1; transform:translateY(0); }
+  .rmsg:last-child{ border-bottom:none; }
+  .rmsg .who{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); display:block; margin-bottom:3px; }
+  .rmsg.recruiter .who{ color:var(--risk-high); }
+  .replay-score{ position:sticky; top:24px; background:var(--bg-card); border:1px solid var(--line); border-radius:12px; padding:22px 16px; text-align:center; }
+  .replay-score .num{ font-family:'Space Grotesk',sans-serif; font-size:40px; font-weight:700; color:var(--risk-high); }
+  .replay-score .lbl{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.08em; margin-top:6px; }
+
+  /* Risk contributors */
+  .contrib-row{ display:grid; grid-template-columns:200px 1fr 40px; align-items:center; gap:14px; margin-bottom:13px; opacity:0; transform:translateY(6px); transition:opacity .4s ease, transform .4s ease; }
+  .contrib-row.in{ opacity:1; transform:translateY(0); }
+  .contrib-label{ font-size:14px; color:var(--ink-dim); }
+  .contrib-track{ height:10px; background:var(--line-soft); border-radius:6px; overflow:hidden; }
+  .contrib-fill{ height:100%; width:0%; background:linear-gradient(to right,var(--risk-mid),var(--risk-crit)); border-radius:6px; transition:width 1s cubic-bezier(.2,.8,.2,1); }
+  .contrib-val{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-faint); text-align:right; }
+  .contrib-total{ display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--line); margin-top:20px; padding-top:20px; }
+  .contrib-total .lbl{ font-family:'Space Grotesk',sans-serif; font-size:15px; color:var(--ink); }
+  .contrib-total .val{ font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; color:var(--risk-crit); }
+
+  /* Ending flow */
+  .flow{ display:flex; flex-direction:column; align-items:center; gap:0; }
+  .flow-step{ display:flex; flex-direction:column; align-items:center; gap:6px; opacity:0; transform:translateY(10px); transition:opacity .5s ease, transform .5s ease; padding:12px 0; }
+  .flow-step.in{ opacity:1; transform:translateY(0); }
+  .flow-step .pill{ background:var(--bg-card); border:1px solid var(--line); border-radius:30px; padding:10px 22px; font-size:14.5px; }
+  .flow-step .risk{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--risk-high); font-weight:600; }
+  .flow-arrow{ color:var(--ink-faint); font-size:16px; opacity:0; transition:opacity .4s ease; }
+  .flow-arrow.in{ opacity:1; }
+  .final-banner{ margin-top:30px; padding:26px 30px; border:1px solid var(--risk-crit); border-radius:14px; background:rgba(214,69,69,0.08); text-align:center; opacity:0; transform:scale(.96); transition:opacity .6s ease, transform .6s ease; }
+  .final-banner.in{ opacity:1; transform:scale(1); }
+  .final-banner .lbl{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; color:var(--risk-crit); text-transform:uppercase; margin-bottom:10px; }
+  .final-banner h3{ font-family:'Space Grotesk',sans-serif; font-size:clamp(22px,4vw,32px); margin:0; color:var(--ink); letter-spacing:-0.01em; }
+
+  /* Memory panel */
+  .memory-card{ background:var(--bg-card); border:1px solid var(--line); border-radius:14px; padding:28px 30px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:22px; }
+  .memory-left h4{ font-family:'Space Grotesk',sans-serif; font-size:16.5px; margin:0 0 6px; font-weight:600; }
+  .memory-left p{ margin:0; color:var(--ink-faint); font-size:13.5px; max-width:38ch; }
+  .memory-counts{ display:flex; gap:24px; align-items:center; }
+  .memory-counts .mc{ text-align:center; }
+  .memory-counts .mc .n{ font-family:'Space Grotesk',sans-serif; font-size:32px; font-weight:700; color:var(--ink-faint); }
+  .memory-counts .mc .n.now{ color:var(--trust); }
+  .memory-counts .mc .l{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-top:4px; }
+  .memory-arrow{ font-size:20px; color:var(--ink-faint); }
+  .memory-caption{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); margin-top:16px; }
+
+  /* Case library */
+  .lib-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:14px; }
+  @media (max-width:640px){ .lib-grid{ grid-template-columns:1fr; } }
+  .lib-card{ border:1px solid var(--line); border-radius:12px; padding:18px 20px; background:var(--bg-card); }
+  .lib-card.active{ border-color:var(--trust); background:linear-gradient(180deg, rgba(79,209,197,0.08), var(--bg-card)); }
+  .lib-card .n{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:0.08em; margin-bottom:6px; }
+  .lib-card.active .n{ color:var(--trust); }
+  .lib-card h5{ font-family:'Space Grotesk',sans-serif; font-size:15.5px; margin:0 0 4px; font-weight:600; }
+  .lib-card p{ margin:0; font-size:13px; color:var(--ink-faint); }
+  .lib-card.locked{ opacity:0.55; }
+  .lib-card.locked h5::after{ content:" 🔒"; }
+  .positioning{ border-top:1px solid var(--line); padding-top:30px; margin-top:14px; }
+  .positioning p{ font-size:17px; color:var(--ink-dim); max-width:64ch; }
+  .positioning p b{ color:var(--ink); font-weight:600; }
+  .redaction-note{ margin-top:26px; padding:14px 16px; border:1px solid var(--line); border-left:2px solid var(--risk-mid); background:var(--bg-raised); font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-dim); max-width:60ch; }
+
+  /* Report generator */
+  .report-card{ background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:36px; }
+  .report-list{ display:grid; grid-template-columns:1fr 1fr; gap:9px 22px; margin:20px 0 28px; font-size:13.5px; color:var(--ink-dim); }
+  .report-list div::before{ content:"—  "; color:var(--ink-faint); }
+  .gen-btn{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; color:#08110F; background:var(--trust); border:none; padding:14px 26px; border-radius:10px; cursor:pointer; }
+  .gen-btn:hover{ filter:brightness(1.08); }
+  .gen-btn:disabled{ opacity:0.6; cursor:default; }
+  .export-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+  .export-chip{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:7px 12px; border-radius:20px; border:1px solid var(--line); color:var(--ink-faint); }
+  .export-chip.ready{ border-color:var(--trust); color:var(--trust); }
+
+  footer{ padding:50px 0 70px; }
+  .replay-btn{ display:inline-flex; align-items:center; gap:8px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--trust); background:var(--trust-dim); border:1px solid rgba(79,209,197,0.4); padding:10px 18px; border-radius:30px; cursor:pointer; margin-bottom:26px; }
+  .replay-btn:hover{ background:rgba(79,209,197,0.2); }
+  footer .fine{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-faint); max-width:60ch; }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition-duration:0.01ms !important; animation-duration:0.01ms !important; } }
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="topbar-mask" id="topbarMask"><div class="topbar-fill"></div></div></div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero" id="heroSection">
+    <div class="hero-tag">Guardian Investigation Engine</div>
+    <h1 class="title">Guardian doesn't read messages.<br>It builds <em>evidence</em>.</h1>
+    <p class="hero-dek">Case File 001 — a real WhatsApp investment scam, worked by six specialist agents in parallel, with every conclusion traced back to its source.</p>
+    <div class="console">
+      <div class="console-top"><span>guardian://intake · fynor_case_001.txt</span><div class="console-dots"><span></span><span></span><span></span></div></div>
+      <div class="barline" id="barline">Uploading WhatsApp Conversation…</div>
+      <div class="progress-outer"><div class="progress-inner" id="uploadBar"></div></div>
+      <div id="statusLines">
+        <div class="status-line"><div class="box"></div>Extracting messages</div>
+        <div class="status-line"><div class="box"></div>Finding participants</div>
+        <div class="status-line"><div class="box"></div>Scanning links</div>
+        <div class="status-line"><div class="box"></div>Dispatching to specialist agents</div>
+      </div>
+    </div>
+    <div class="hero-line">↓ scroll to watch the investigation unfold</div>
+  </section>
+
+  <!-- MULTI-AGENT DASHBOARD -->
+  <section id="agentsSection">
+    <div class="eyebrow">Multi-agent intelligence</div>
+    <h2 class="h">Six specialists, working at once</h2>
+    <p class="lede">Not one model guessing — six purpose-built agents, each responsible for one slice of the evidence.</p>
+    <div class="agent-grid" id="agentGrid">
+      <div class="agent-card"><h4><span class="dot"></span>Network Agent</h4><ul><li>Domain reputation</li><li>WHOIS</li><li>DNS</li><li>Hosting</li></ul></div>
+      <div class="agent-card"><h4><span class="dot"></span>Behaviour Agent</h4><ul><li>Persuasion tactics</li><li>Urgency</li><li>Social engineering</li></ul></div>
+      <div class="agent-card"><h4><span class="dot"></span>Financial Agent</h4><ul><li>Withdrawal conditions</li><li>Referral incentives</li><li>Investment promises</li></ul></div>
+      <div class="agent-card"><h4><span class="dot"></span>Identity Agent</h4><ul><li>KYC order</li><li>Credential handling</li></ul></div>
+      <div class="agent-card"><h4><span class="dot"></span>Conversation Agent</h4><ul><li>Emotional manipulation</li><li>Dependency</li><li>Authority</li></ul></div>
+      <div class="agent-card"><h4><span class="dot"></span>Evidence Agent</h4><ul><li>Timeline</li><li>Report</li><li>Final recommendation</li></ul></div>
+    </div>
+  </section>
+
+  <!-- EVIDENCE & REASONING PANEL -->
+  <section id="evidencePanelSection">
+    <div class="eyebrow">Evidence, not confidence</div>
+    <h2 class="h">Every finding, traced to its source</h2>
+    <p class="lede">Guardian separates what it directly saw from what it inferred from what it concluded — and links each one back to the original message.</p>
+
+    <div class="tier-block">
+      <div class="tier-head"><span class="tier-badge observed">🟢 Observed</span><span class="tier-desc">The system read this directly</span></div>
+
+      <div class="ev-row">
+        <div class="ev-top"><div class="ev-title">Registration required a referral code embedded in the URL</div><div class="ev-points">+18</div></div>
+        <div class="ev-source" data-target="src1">▸ Message · 23 Jun · 08:09</div>
+        <div class="ev-snippet" id="src1"><div class="ev-snippet-in">"fynor.com/register?inviteCode=[redacted]"</div></div>
+        <div class="reasoning-toggle" data-target="chain1">Show reasoning ▾</div>
+        <div class="reasoning-chain" id="chain1"><div class="reasoning-chain-in">
+          <div class="rstep"><span class="arw">→</span>Detected registration URL</div>
+          <div class="rstep"><span class="arw">→</span>URL contains an invite parameter</div>
+          <div class="rstep"><span class="arw">→</span>Invite parameter is required to complete signup</div>
+          <div class="rstep"><span class="arw">→</span>Referral dependency confirmed</div>
+          <div class="rstep final"><span class="arw">→</span>Risk +18</div>
+        </div></div>
+      </div>
+
+      <div class="ev-row">
+        <div class="ev-top"><div class="ev-title">Account password sent in plaintext over WhatsApp</div><div class="ev-points">+14</div></div>
+        <div class="ev-source" data-target="src2">▸ Message · 23 Jun · 08:11</div>
+        <div class="ev-snippet" id="src2"><div class="ev-snippet-in">"Password: [redacted]"</div></div>
+      </div>
+
+      <div class="ev-row">
+        <div class="ev-top"><div class="ev-title">Withdrawal explicitly tied to recruiting five participants</div><div class="ev-points">+26</div></div>
+        <div class="ev-source" data-target="src3">▸ Message · 26 Jun · 11:30</div>
+        <div class="ev-snippet" id="src3"><div class="ev-snippet-in">"You have to wait until you have five people before you can withdraw."</div></div>
+        <div class="reasoning-toggle" data-target="chain3">Show reasoning ▾</div>
+        <div class="reasoning-chain" id="chain3"><div class="reasoning-chain-in">
+          <div class="rstep"><span class="arw">→</span>Detected withdrawal condition</div>
+          <div class="rstep"><span class="arw">→</span>Condition requires new participants, not capital or time</div>
+          <div class="rstep"><span class="arw">→</span>Matches structural definition of pyramid payout</div>
+          <div class="rstep"><span class="arw">→</span>Recruitment dependency confirmed</div>
+          <div class="rstep final"><span class="arw">→</span>Risk +26</div>
+        </div></div>
+      </div>
+
+      <div class="ev-row">
+        <div class="ev-top"><div class="ev-title">Identity verification requested three weeks after funds committed</div><div class="ev-points">+8</div></div>
+        <div class="ev-source" data-target="src4">▸ Message · 13 Jul</div>
+        <div class="ev-snippet" id="src4"><div class="ev-snippet-in">"Please do the KYC, here's the video for it."</div></div>
+      </div>
+    </div>
+
+    <div class="tier-block">
+      <div class="tier-head"><span class="tier-badge inferred">🟡 Inferred</span><span class="tier-desc">Derived from the pattern, not stated outright</span></div>
+      <div class="ev-row"><div class="ev-top"><div class="ev-title">Platform revenue likely depends on new deposits rather than trading activity</div></div><div class="ev-source">No verifiable trading output was ever shared — only signal codes and a demo video</div></div>
+      <div class="ev-row"><div class="ev-top"><div class="ev-title">Recruiter is following a distributed script</div></div><div class="ev-source">Phrasing matches patterns already logged from other cases</div></div>
+    </div>
+
+    <div class="tier-block" style="margin-bottom:0;">
+      <div class="tier-head"><span class="tier-badge conclusion">🔴 Conclusion</span><span class="tier-desc">Guardian's synthesized judgment</span></div>
+      <div class="ev-row"><div class="ev-top"><div class="ev-title">High likelihood of recruitment-based investment fraud — Pyramid Scheme pattern</div><div class="ev-points" style="color:var(--risk-crit)">94/100</div></div></div>
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section id="timelineSection">
+    <div class="eyebrow">Timeline intelligence</div>
+    <h2 class="h">The case, hour by hour</h2>
+    <p class="lede">Reconstructed directly from message timestamps — not summarized, not rounded.</p>
+    <div class="tl" id="tlList">
+      <div class="tl-item" style="--stage-color:var(--trust)"><div class="tl-date">17 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>First contact</h4><p>A known contact reopens a prior conversation about "that trading thing."</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-low)"><div class="tl-date">21 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>Payment sent</h4><p>Funds transferred before any platform, domain, or regulatory check.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-mid)"><div class="tl-date">23 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>Referral registration</h4><p>Invite-coded signup, plaintext password, guaranteed-return messaging.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-high)"><div class="tl-date">26 Jun</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>Recruitment requirement appears</h4><p>Withdrawal disclosed as conditional on recruiting five further participants.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-crit)"><div class="tl-date">13 Jul</div><div class="tl-node"><div class="dot"></div><div class="ln"></div></div><div class="tl-body"><h4>KYC requested</h4><p>Identity verification requested three weeks after funds were already committed.</p></div></div>
+      <div class="tl-item" style="--stage-color:var(--risk-crit)"><div class="tl-date">30 Jul</div><div class="tl-node"><div class="dot"></div></div><div class="tl-body"><h4>Engagement continues</h4><p>Voice-note exchanges ongoing — the case remains open at time of writing.</p></div></div>
+    </div>
+  </section>
+
+  <!-- SMOKING GUN -->
+  <section id="gunSection">
+    <div class="gun">
+      <div class="gun-inner" id="gunInner">
+        <div class="gun-tag">Critical evidence</div>
+        <div class="gun-quote">You have to wait until you have five people before you can withdraw</div>
+        <div class="gun-src">Message · 26 Jun · 11:30</div>
+        <div class="gun-meta">
+          <div><span>Evidence type</span><b style="color:var(--trust)">🟢 Observed</b></div>
+          <div><span>Guardian's conclusion</span><b style="color:var(--risk-crit)">🔴 Pyramid Scheme</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PATTERN MATCHING -->
+  <section id="patternSection">
+    <div class="eyebrow">Pattern matching</div>
+    <h2 class="h">Compared against known scam behaviour, not keywords</h2>
+    <p class="pm-note">Guardian compared this conversation's structure against 47 documented scam patterns.</p>
+    <div id="pmList">
+      <div class="pm-row" data-pct="18" data-color="var(--trust)"><div class="pm-label">Pig Butchering</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">18%</div></div>
+      <div class="pm-row" data-pct="41" data-color="var(--risk-low)"><div class="pm-label">Fake Crypto Exchange</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">41%</div></div>
+      <div class="pm-row" data-pct="74" data-color="var(--risk-high)"><div class="pm-label">Investment Fraud</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">74%</div></div>
+      <div class="pm-row" data-pct="96" data-color="var(--risk-crit)"><div class="pm-label">Pyramid Scheme</div><div class="pm-track"><div class="pm-fill"></div></div><div class="pm-pct">96%</div></div>
+    </div>
+  </section>
+
+  <!-- BEHAVIOUR GRAPH -->
+  <section id="behaviorSection">
+    <div class="eyebrow">Behavioural graph</div>
+    <h2 class="h">The scam's psychological profile</h2>
+    <p class="lede">Six manipulation techniques, weighted by how strongly each showed up in the conversation.</p>
+    <div id="bgList">
+      <div class="bg-row" data-pct="58"><div class="bg-label">Recruitment</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">7/12</div></div>
+      <div class="bg-row" data-pct="83"><div class="bg-label">Financial Pressure</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">10/12</div></div>
+      <div class="bg-row" data-pct="50"><div class="bg-label">Urgency</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">6/12</div></div>
+      <div class="bg-row" data-pct="67"><div class="bg-label">Authority Manipulation</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">8/12</div></div>
+      <div class="bg-row" data-pct="100"><div class="bg-label">Recruitment Dependency</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">12/12</div></div>
+      <div class="bg-row" data-pct="67"><div class="bg-label">Social Proof</div><div class="bg-track"><div class="bg-fill"></div></div><div class="bg-val">8/12</div></div>
+    </div>
+  </section>
+
+  <!-- TRUST GRAPH -->
+  <section id="graphSection">
+    <div class="eyebrow">Trust graph</div>
+    <h2 class="h">How trust — and risk — actually moved</h2>
+    <p class="lede">Not a score in isolation. A chain of relationships, each one a point where the pattern could have been caught.</p>
+    <div class="tg" id="tgFlow">
+      <div class="tg-node"><span class="tag">Person</span>The client</div>
+      <div class="tg-arrow">↓</div>
+      <div class="tg-node"><span class="tag">Contact</span>Recruiter</div>
+      <div class="tg-arrow">↓</div>
+      <div class="tg-node"><span class="tag">Group</span>WhatsApp signal group</div>
+      <div class="tg-arrow">↓</div>
+      <div class="tg-node"><span class="tag">Link</span>Referral registration</div>
+      <div class="tg-arrow">↓</div>
+      <div class="tg-node"><span class="tag">Platform</span>Fynor Trading</div>
+      <div class="tg-arrow">↓</div>
+      <div class="tg-node"><span class="tag">Account</span>Recipient bank account</div>
+    </div>
+    <div class="tg-fan-label">↓ Required to unlock withdrawal</div>
+    <div class="tg-fan" id="tgFan">
+      <div class="mini">?</div><div class="mini">?</div><div class="mini">?</div><div class="mini">?</div><div class="mini">?</div>
+    </div>
+  </section>
+
+  <!-- CONVERSATION REPLAY -->
+  <section id="replaySection">
+    <div class="eyebrow">Conversation replay</div>
+    <h2 class="h">Watch the score move in real time</h2>
+    <p class="lede">Every message updates the Trust Risk score — the verdict is never the result of a single line.</p>
+    <div class="replay-shell">
+      <div class="replay-console" id="replayConsole">
+        <div class="rmsg recruiter" data-score="12"><span class="who">Recruiter</span>"Are you still interested in that trading thing we spoke about?"</div>
+        <div class="rmsg" data-score="18"><span class="who">Client</span>"I've sent the transfer, my friend."</div>
+        <div class="rmsg" data-score="26"><span class="who">Client</span>"Password: [redacted]" — sent over open chat</div>
+        <div class="rmsg recruiter" data-score="41"><span class="who">Recruiter</span>"Success and wealth will surely be yours."</div>
+        <div class="rmsg recruiter" data-score="58"><span class="who">Recruiter</span>"Have you joined the group yet?"</div>
+        <div class="rmsg" data-score="73"><span class="who">Client</span>"You have to wait until you have five people before you can withdraw."</div>
+        <div class="rmsg recruiter" data-score="94"><span class="who">Recruiter</span>"Please do the KYC — here's the video for it."</div>
+      </div>
+      <div class="replay-score"><div class="num" id="replayNum">0</div><div class="lbl">Trust risk score</div></div>
+    </div>
+  </section>
+
+  <!-- RISK CONTRIBUTORS -->
+  <section id="contribSection">
+    <div class="eyebrow">Why 94?</div>
+    <h2 class="h">The score, broken into what earned it</h2>
+    <p class="lede">No single number should need to be taken on faith.</p>
+    <div id="contribList">
+      <div class="contrib-row" data-pct="21" data-val="21"><div class="contrib-label">Withdrawal restrictions</div><div class="contrib-track"><div class="contrib-fill"></div></div><div class="contrib-val">21</div></div>
+      <div class="contrib-row" data-pct="26" data-val="26"><div class="contrib-label">Recruitment requirement</div><div class="contrib-track"><div class="contrib-fill"></div></div><div class="contrib-val">26</div></div>
+      <div class="contrib-row" data-pct="18" data-val="18"><div class="contrib-label">Referral registration</div><div class="contrib-track"><div class="contrib-fill"></div></div><div class="contrib-val">18</div></div>
+      <div class="contrib-row" data-pct="9" data-val="9"><div class="contrib-label">Guaranteed wealth language</div><div class="contrib-track"><div class="contrib-fill"></div></div><div class="contrib-val">9</div></div>
+      <div class="contrib-row" data-pct="8" data-val="8"><div class="contrib-label">Delayed KYC</div><div class="contrib-track"><div class="contrib-fill"></div></div><div class="contrib-val">8</div></div>
+      <div class="contrib-row" data-pct="7" data-val="7"><div class="contrib-label">Social reinforcement</div><div class="contrib-track"><div class="contrib-fill"></div></div><div class="contrib-val">7</div></div>
+      <div class="contrib-row" data-pct="5" data-val="5"><div class="contrib-label">Credential sharing</div><div class="contrib-track"><div class="contrib-fill"></div></div><div class="contrib-val">5</div></div>
+    </div>
+    <div class="contrib-total"><div class="lbl">Total risk score</div><div class="val" id="contribTotal">0</div></div>
+  </section>
+
+  <!-- ENDING -->
+  <section id="endingSection">
+    <div class="eyebrow">If Guardian had been used</div>
+    <h2 class="h">The same case, with Guardian in the loop</h2>
+    <div class="flow" id="flowList">
+      <div class="flow-step"><div class="pill">Client uploads the first screenshot</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Guardian begins analysis <span class="risk">Risk 31%</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Platform investigation begins</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Referral pattern found <span class="risk">Risk 68%</span></div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><div class="pill">Recruitment pattern detected <span class="risk">Risk 94%</span></div></div>
+    </div>
+    <div class="final-banner" id="finalBanner"><div class="lbl">Guardian's recommendation</div><h3>Do not send money.</h3></div>
+  </section>
+
+  <!-- AI MEMORY -->
+  <section id="memorySection">
+    <div class="eyebrow">Guardian learning</div>
+    <h2 class="h">Every case teaches the next one</h2>
+    <div class="memory-card">
+      <div class="memory-left"><h4>New pattern reinforced</h4><p>Referral-gated withdrawal requiring five new participants</p></div>
+      <div class="memory-counts">
+        <div class="mc"><div class="n" id="memBefore">3</div><div class="l">Previously observed</div></div>
+        <div class="memory-arrow">→</div>
+        <div class="mc"><div class="n now" id="memAfter">3</div><div class="l">Now observed</div></div>
+      </div>
+    </div>
+    <div class="memory-caption">Conceptual — pattern memory grows as the Case Library expands beyond Case File 001.</div>
+  </section>
+
+  <!-- CASE LIBRARY -->
+  <section id="librarySection">
+    <div class="eyebrow">Guardian intelligence case library</div>
+    <h2 class="h">Case File 001 of a growing library</h2>
+    <div class="lib-grid">
+      <div class="lib-card active"><div class="n">Case 001</div><h5>Fynor Trading</h5><p>Investment / pyramid scheme</p></div>
+      <div class="lib-card locked"><div class="n">Case 002</div><h5>Fake Employment Scam</h5><p>In progress</p></div>
+      <div class="lib-card locked"><div class="n">Case 003</div><h5>Romance Investment Fraud</h5><p>In progress</p></div>
+      <div class="lib-card locked"><div class="n">Case 004</div><h5>WhatsApp Impersonation</h5><p>In progress</p></div>
+    </div>
+    <div class="positioning"><p><b>Guardian is building an explainable Trust Intelligence engine, trained on real-world scam conversations from Africa.</b> This case doesn't just get labeled fraudulent — it gets reconstructed, its behavioural evidence identified, every conclusion explained, and the exact moment intervention could have prevented harm made visible.</p></div>
+    <div class="redaction-note">This reconstruction redacts the client's name, phone number, email address, ID number, and account password — all of which appeared in plaintext in the original chat export.</div>
+  </section>
+
+  <!-- REPORT GENERATOR -->
+  <section id="reportSection">
+    <div class="eyebrow">Digital witness</div>
+    <h2 class="h">Guardian doesn't stop at a verdict</h2>
+    <div class="report-card">
+      <p class="lede" style="margin-bottom:0;">A complete investigation report, assembled from everything above — ready to hand to a bank, a regulator, or the client themselves.</p>
+      <div class="report-list">
+        <div>Executive summary</div><div>Full timeline</div>
+        <div>Risk contributor breakdown</div><div>Evidence log with sources</div>
+        <div>Behavioural assessment</div><div>Chain-of-evidence log</div>
+        <div>Recommended next actions</div><div>Redaction record</div>
+      </div>
+      <button class="gen-btn" id="genBtn">Download case report</button>
+      <div class="export-row">
+        <span class="export-chip ready">PDF · available now</span>
+        <span class="export-chip">Police report package · coming soon</span>
+        <span class="export-chip">Regulator submission · coming soon</span>
+        <span class="export-chip">Bank dispute package · coming soon</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <button class="replay-btn" id="replayBtn">↻ Replay investigation</button>
+    <p class="fine">Guardian Investigation Engine — Case File 001, reconstructed from a WhatsApp export dated 17 Jun – 30 Jul 2026. Illustrative confidence and pattern-match figures demonstrate the intended experience; production values will be generated by the live pipeline.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const topbarMask = document.getElementById('topbarMask');
+  function updateTopbar(){
+    const h = document.documentElement;
+    const max = h.scrollHeight - h.clientHeight;
+    topbarMask.style.width = (max>0 ? (h.scrollTop/max)*100 : 0) + '%';
+  }
+  window.addEventListener('scroll', updateTopbar); updateTopbar();
+
+  function onVisible(el, cb, threshold){
+    if (REDUCED){ cb(); return; }
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{ if (entry.isIntersecting){ cb(); io.unobserve(entry.target); } });
+    }, { threshold: threshold || 0.3 });
+    io.observe(el);
+  }
+  function countUp(el, from, to, duration){
+    if (REDUCED){ el.textContent = to; return; }
+    const start = performance.now();
+    function step(t){
+      const p = Math.min(1,(t-start)/duration);
+      el.textContent = Math.round(from + (to-from)*p);
+      if (p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* hero intake */
+  const uploadBar = document.getElementById('uploadBar');
+  const statusLines = document.querySelectorAll('#statusLines .status-line');
+  function runUploadSequence(){
+    statusLines.forEach(l=>l.classList.remove('done'));
+    uploadBar.style.width = '0%';
+    if (REDUCED){ uploadBar.style.width='100%'; statusLines.forEach(l=>l.classList.add('done')); return; }
+    const dur=2000, start=performance.now();
+    function step(t){ const p=Math.min(1,(t-start)/dur); uploadBar.style.width=(p*100)+'%'; if(p<1) requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+    statusLines.forEach((line,i)=> setTimeout(()=>line.classList.add('done'), 300*i+300));
+  }
+  window.addEventListener('load', ()=> setTimeout(runUploadSequence, 300));
+  document.getElementById('replayBtn').addEventListener('click', ()=>{
+    document.getElementById('heroSection').scrollIntoView({behavior:'smooth'});
+    setTimeout(runUploadSequence, 500);
+  });
+
+  /* multi-agent dashboard */
+  onVisible(document.getElementById('agentsSection'), ()=>{
+    const cards = document.querySelectorAll('#agentGrid .agent-card');
+    cards.forEach((card,ci)=>{
+      setTimeout(()=>{
+        card.classList.add('in');
+        const items = card.querySelectorAll('li');
+        items.forEach((li,ii)=> setTimeout(()=> li.classList.add('done'), REDUCED?0:ii*140+120));
+      }, REDUCED?0:ci*90);
+    });
+  });
+
+  /* evidence panel toggles */
+  document.querySelectorAll('.ev-source[data-target]').forEach(src=>{
+    src.addEventListener('click', ()=>{
+      const el = document.getElementById(src.dataset.target);
+      el.classList.toggle('open');
+    });
+  });
+  document.querySelectorAll('.reasoning-toggle[data-target]').forEach(tog=>{
+    tog.addEventListener('click', ()=>{
+      const el = document.getElementById(tog.dataset.target);
+      const opening = !el.classList.contains('open');
+      el.classList.toggle('open');
+      tog.textContent = opening ? 'Hide reasoning ▴' : 'Show reasoning ▾';
+      if (opening){
+        const steps = el.querySelectorAll('.rstep');
+        steps.forEach(s=>s.classList.remove('in'));
+        steps.forEach((s,i)=> setTimeout(()=> s.classList.add('in'), REDUCED?0:i*180));
+      }
+    });
+  });
+
+  /* timeline */
+  onVisible(document.getElementById('timelineSection'), ()=>{
+    document.querySelectorAll('#tlList .tl-item').forEach((it,i)=> setTimeout(()=> it.classList.add('in'), REDUCED?0:i*160));
+  });
+
+  /* smoking gun */
+  onVisible(document.getElementById('gunSection'), ()=> document.getElementById('gunInner').classList.add('in'), 0.55);
+
+  /* pattern matching */
+  onVisible(document.getElementById('patternSection'), ()=>{
+    document.querySelectorAll('#pmList .pm-row').forEach((row,i)=>{
+      setTimeout(()=>{ const f=row.querySelector('.pm-fill'); f.style.background=row.dataset.color; f.style.width=row.dataset.pct+'%'; }, REDUCED?0:i*170);
+    });
+  });
+
+  /* behaviour graph */
+  onVisible(document.getElementById('behaviorSection'), ()=>{
+    document.querySelectorAll('#bgList .bg-row').forEach((row,i)=> setTimeout(()=> row.querySelector('.bg-fill').style.width = row.dataset.pct+'%', REDUCED?0:i*130));
+  });
+
+  /* trust graph */
+  onVisible(document.getElementById('graphSection'), ()=>{
+    const parts = document.querySelectorAll('#tgFlow .tg-node, #tgFlow .tg-arrow');
+    parts.forEach((p,i)=> setTimeout(()=> p.classList.add('in'), REDUCED?0:i*160));
+    const fanDelay = REDUCED?0:parts.length*160+200;
+    setTimeout(()=>{
+      document.querySelectorAll('#tgFan .mini').forEach((m,i)=> setTimeout(()=> m.classList.add('in'), REDUCED?0:i*110));
+    }, fanDelay);
+  }, 0.2);
+
+  /* conversation replay */
+  const replayNum = document.getElementById('replayNum');
+  onVisible(document.getElementById('replaySection'), ()=>{
+    let prev=0;
+    document.querySelectorAll('#replayConsole .rmsg').forEach((m,i)=>{
+      setTimeout(()=>{ m.classList.add('in'); const to=parseInt(m.dataset.score,10); countUp(replayNum, prev, to, REDUCED?0:480); prev=to; }, REDUCED?0:i*530);
+    });
+  }, 0.2);
+
+  /* risk contributors */
+  onVisible(document.getElementById('contribSection'), ()=>{
+    const rows = document.querySelectorAll('#contribList .contrib-row');
+    let total = 0;
+    rows.forEach((row,i)=>{
+      setTimeout(()=>{
+        row.classList.add('in');
+        row.querySelector('.contrib-fill').style.width = row.dataset.pct + '%';
+      }, REDUCED?0:i*160);
+    });
+    rows.forEach(r=> total += parseInt(r.dataset.val,10));
+    setTimeout(()=> countUp(document.getElementById('contribTotal'), 0, total, REDUCED?0:900), REDUCED?0:rows.length*160+200);
+  }, 0.15);
+
+  /* ending flow */
+  onVisible(document.getElementById('endingSection'), ()=>{
+    const steps = document.querySelectorAll('#flowList .flow-step, #flowList .flow-arrow');
+    steps.forEach((s,i)=> setTimeout(()=> s.classList.add('in'), REDUCED?0:i*220));
+    setTimeout(()=> document.getElementById('finalBanner').classList.add('in'), REDUCED?0:steps.length*220+300);
+  }, 0.15);
+
+  /* memory panel */
+  onVisible(document.getElementById('memorySection'), ()=>{
+    countUp(document.getElementById('memAfter'), 3, 4, REDUCED?0:800);
+  }, 0.4);
+
+  /* report generation */
+  document.getElementById('genBtn').addEventListener('click', function(){
+    const btn = this;
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Assembling report…';
+    setTimeout(()=>{
+      const win = window.open('', '_blank');
+      if (!win){ btn.disabled=false; btn.textContent=original; alert('Please allow pop-ups to view the report.'); return; }
+      const today = new Date().toLocaleDateString('en-ZA', { year:'numeric', month:'long', day:'numeric' });
+      win.document.write(
+        '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Guardian Investigation Report — Case File 001</title>' +
+        '<style>' +
+        'body{font-family:Georgia,serif;color:#1A1A1A;max-width:720px;margin:50px auto;padding:0 24px;line-height:1.6;}' +
+        'h1{font-family:Arial,sans-serif;font-size:24px;margin-bottom:4px;}' +
+        '.sub{color:#555;font-size:13px;margin-bottom:34px;font-family:Arial,sans-serif;}' +
+        'h2{font-family:Arial,sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #ccc;padding-bottom:6px;margin-top:34px;}' +
+        'li{margin-bottom:6px;} .score{font-size:36px;font-weight:bold;color:#B23A2E;font-family:Arial,sans-serif;}' +
+        '.note{background:#f4f4f4;border-left:3px solid #B23A2E;padding:10px 14px;font-size:12.5px;color:#444;font-family:Arial,sans-serif;margin-top:36px;}' +
+        '.foot{font-family:Arial,sans-serif;font-size:11px;color:#888;margin-top:30px;}' +
+        '@media print{ .noprint{display:none;} }' +
+        '</style></head><body>' +
+        '<h1>Guardian Investigation Report</h1>' +
+        '<div class="sub">Case File 001 · Fynor Trading Platform · Generated ' + today + '</div>' +
+        '<h2>Executive Summary</h2>' +
+        '<p>Guardian analysed a documented WhatsApp exchange spanning 17 Jun – 30 Jul 2026 and assessed the "Fynor Trading" opportunity at <b>94/100 — Very High Risk</b>. The platform exhibits a referral-gated onboarding process, withdrawal conditions tied to recruiting new participants, and identity verification requested only after funds were already committed — a combination consistent with a recruitment-based pyramid structure rather than a genuine trading platform.</p>' +
+        '<h2>Timeline</h2><ul>' +
+        '<li>17 Jun — First contact via a known personal contact</li>' +
+        '<li>21 Jun — Funds transferred, before any platform verification</li>' +
+        '<li>23 Jun — Referral-coded registration; password shared in plaintext</li>' +
+        '<li>26 Jun — Withdrawal disclosed as conditional on recruiting five participants</li>' +
+        '<li>13 Jul — Identity verification requested</li>' +
+        '<li>30 Jul — Engagement ongoing at time of report</li>' +
+        '</ul>' +
+        '<h2>Risk Contributors</h2><ul>' +
+        '<li>Recruitment requirement — 26</li><li>Withdrawal restrictions — 21</li><li>Referral registration — 18</li>' +
+        '<li>Guaranteed wealth language — 9</li><li>Delayed KYC — 8</li><li>Social reinforcement — 7</li><li>Credential sharing — 5</li>' +
+        '</ul><div class="score">94 / 100</div>' +
+        '<h2>Evidence Log</h2><ul>' +
+        '<li>🟢 Observed — Referral code required in registration URL (23 Jun, 08:09)</li>' +
+        '<li>🟢 Observed — Password shared in plaintext (23 Jun, 08:11)</li>' +
+        '<li>🟢 Observed — Withdrawal tied to five referrals (26 Jun, 11:30)</li>' +
+        '<li>🟢 Observed — KYC requested after funds committed (13 Jul)</li>' +
+        '<li>🟡 Inferred — No independently verifiable trading activity</li>' +
+        '<li>🔴 Conclusion — High likelihood of recruitment-based investment fraud (Pyramid Scheme)</li>' +
+        '</ul>' +
+        '<h2>Recommendation</h2><ul>' +
+        '<li>Do not send further funds</li>' +
+        '<li>Verify the platform against the FSCA register of licensed financial services providers</li>' +
+        '<li>Do not recruit family or friends into the platform</li>' +
+        '</ul>' +
+        '<div class="note">This report redacts the client\'s name, phone number, email address, ID number, and account password. Confidence and pattern-match figures reflect Guardian\'s current rule-based detection pipeline and are presented for illustrative purposes in this prototype.</div>' +
+        '<div class="foot">Guardian Trust Intelligence · Case File 001 · Prototype output, not a regulatory or legal determination.</div>' +
+        '<div class="noprint" style="margin-top:24px;"><button onclick="window.print()" style="font-family:Arial,sans-serif;padding:10px 18px;cursor:pointer;">Print / Save as PDF</button></div>' +
+        '</body></html>'
+      );
+      win.document.close();
+      btn.disabled = false; btn.textContent = original;
+    }, 550);
+  });
+
+})();
+</script>
+
+</body>
+</html>
