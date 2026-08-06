@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: guardian
+      POSTGRES_PASSWORD: guardian
+      POSTGRES_DB: guardian
+    ports:
+      - "5432:5432"
+    volumes:
+      - guardian_pg_data:/var/lib/postgresql/data
+
+volumes:
+  guardian_pg_data:
