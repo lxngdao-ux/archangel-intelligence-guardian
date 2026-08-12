@@ -14,3 +14,4 @@ export async function GET() {
     return toErrorResponse(err);
   }
 }
+export const dynamic = "force-dynamic";
