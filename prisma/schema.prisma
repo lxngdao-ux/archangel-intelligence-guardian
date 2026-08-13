@@ -20,24 +20,37 @@ enum Role {
   ADMINISTRATOR
 }
 
+enum ProtectionMode {
+  ANGEL_WATCH
+  ARCHANGEL
+}
+
+enum DeviceStatus {
+  ACTIVE
+  PAUSED
+  OFFLINE
+  REVOKED
+}
+
 model User {
-  id             String        @id @default(cuid())
-  email          String        @unique
-  emailVerified  DateTime?
-  passwordHash   String? // null for OAuth-only accounts
-  name           String?
-  image          String?
-  role           Role          @default(USER)
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String? // null for OAuth-only accounts
+  name          String?
+  image         String?
+  role          Role      @default(USER)
 
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
-  accounts      Account[]
-  sessions      Session[]
-  investigations Investigation[]
-  files         File[]
-  notifications Notification[]
-  activityLogs  ActivityLog[]
+  accounts         Account[]
+  sessions         Session[]
+  investigations   Investigation[]
+  files            File[]
+  notifications    Notification[]
+  activityLogs     ActivityLog[]
+  protectedDevices ProtectedDevice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -99,13 +112,13 @@ enum SubscriptionStatus {
 }
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  members   User[]
-  subscription Subscription?
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  members        User[]
+  subscription   Subscription?
   investigations Investigation[]
-  activityLogs ActivityLog[]
+  activityLogs   ActivityLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -147,16 +160,16 @@ enum InvestigationStatus {
 }
 
 model Investigation {
-  id     String            @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
-  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
-  type      InvestigationType
-  status    InvestigationStatus @default(PENDING)
-  inputText String?             @db.Text // raw URL / pasted text / WhatsApp message
+  type          InvestigationType
+  status        InvestigationStatus @default(PENDING)
+  inputText     String?             @db.Text // raw URL / pasted text / WhatsApp message
   failureReason String?
 
   files       File[]
@@ -179,22 +192,42 @@ model Investigation {
   @@index([organizationId])
 }
 
+// Protected devices — Angel Watch / Archangel
+model ProtectedDevice {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name     String
+  platform String?
+  mode     ProtectionMode @default(ANGEL_WATCH)
+  status   DeviceStatus   @default(ACTIVE)
+
+  lastSeenAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Files & Evidence
 // ─────────────────────────────────────────────────────────────────────────
 
 model File {
-  id              String        @id @default(cuid())
+  id              String         @id @default(cuid())
   investigationId String?
   investigation   Investigation? @relation(fields: [investigationId], references: [id], onDelete: Cascade)
   userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  filename    String
-  mimeType    String
-  sizeBytes   Int
-  storageKey  String // path/key within the configured StorageService
-  storageUrl  String? // public/signed URL, if applicable
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  storageKey String // path/key within the configured StorageService
+  storageUrl String? // public/signed URL, if applicable
 
   uploadedAt DateTime @default(now())
 
@@ -219,7 +252,7 @@ model Evidence {
   kind       EvidenceKind
   content    Json // normalized payload — shape depends on `kind`
   sourceRef  String? // e.g. file id, URL, or "user-input"
-  confidence Float    @default(1.0) // 0–1, how much the agent trusts this evidence
+  confidence Float        @default(1.0) // 0–1, how much the agent trusts this evidence
 
   observations Observation[] // Phase 2a — ADR 0001
 
@@ -233,15 +266,15 @@ model Evidence {
 // ─────────────────────────────────────────────────────────────────────────
 
 model Company {
-  id             String   @id @default(cuid())
-  name           String
-  knownAliases   String[]
+  id               String   @id @default(cuid())
+  name             String
+  knownAliases     String[]
   registrationInfo Json? // registration numbers, jurisdictions, etc.
-  domains        Domain[]
+  domains          Domain[]
 
   entityReferences EntityReference[] // Phase 2a — ADR 0001
 
-  firstSeenAt    DateTime @default(now())
+  firstSeenAt    DateTime  @default(now())
   lastVerifiedAt DateTime?
 
   @@index([name])
@@ -280,7 +313,7 @@ model Entity {
   type         String // "domain" | "company" — Phase 2a's only two types (ADR 0001 §3)
   label        String // display label; redacted if it's a data-subject PII field
   canonicalKey String // normalized natural key, scoped to this investigation only in Phase 2a —
-                       // NOT used for cross-investigation matching yet (ADR 0001 §2)
+  // NOT used for cross-investigation matching yet (ADR 0001 §2)
   attributes   Json
 
   references EntityReference[]
@@ -339,7 +372,7 @@ model Finding {
   weight         String // "low" | "medium" | "high" | "critical"
   description    String
   riskDelta      Int? // risk-direction: positive = more dangerous (ADR 0001 §1). No Finding.status —
-                       // see ADR 0001 §5, deliberately not added without a demonstrated need.
+  // see ADR 0001 §5, deliberately not added without a demonstrated need.
   observationIds String[]
 
   supersedesId String?  @unique
@@ -488,12 +521,12 @@ model Report {
   riskLevel       RiskLevel
   confidenceLevel ConfidenceLevel
 
-  summary             String   @db.Text
-  positiveSignals     Json // string[]
-  warningSigns        Json // string[]
-  missingInformation  Json // string[]
-  detailedFindings    Json // structured per-category breakdown
-  recommendedActions  Json // string[]
+  summary            String @db.Text
+  positiveSignals    Json // string[]
+  warningSigns       Json // string[]
+  missingInformation Json // string[]
+  detailedFindings   Json // structured per-category breakdown
+  recommendedActions Json // string[]
 
   generatedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -532,15 +565,15 @@ enum NotificationType {
 }
 
 model Notification {
-  id     String            @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
-  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type  NotificationType
   title String
-  body  String            @db.Text
+  body  String           @db.Text
   link  String?
-  read  Boolean           @default(false)
+  read  Boolean          @default(false)
 
   createdAt DateTime @default(now())
 
